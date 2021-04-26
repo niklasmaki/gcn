@@ -78,7 +78,7 @@ cost_val = []
 
 d1 = node2vec(adj, FLAGS.dataset)
 
-# Train model
+# Train base model
 for epoch in range(FLAGS.epochs):
 
     t = time.time()
@@ -102,7 +102,12 @@ for epoch in range(FLAGS.epochs):
         print("Early stopping...")
         break
 
-print("Optimization Finished!")
+print("Base model optimization Finished!")
+
+feed_dict = construct_feed_dict(features, support, y_train, train_mask, placeholders)
+preds = sess.run(model.outputs, feed_dict=feed_dict)
+preds = tf.nn.softmax(preds).eval(session=sess)
+print(preds.shape)
 
 # Testing
 test_cost, test_acc, test_duration = evaluate(features, support, y_test, test_mask, placeholders)
