@@ -5,6 +5,8 @@
 tmp/
 *.txt
 !requirements.txt
+start-venv.sh
+start-training.sh
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
