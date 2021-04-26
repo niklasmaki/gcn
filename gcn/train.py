@@ -6,6 +6,7 @@ import tensorflow as tf
 
 from gcn.utils import *
 from gcn.models import GCN, MLP
+from gcn.distances import node2vec
 
 # Set random seed
 seed = 123
@@ -74,6 +75,8 @@ def evaluate(features, support, labels, mask, placeholders):
 sess.run(tf.global_variables_initializer())
 
 cost_val = []
+
+d1 = node2vec(adj, FLAGS.dataset)
 
 # Train model
 for epoch in range(FLAGS.epochs):
