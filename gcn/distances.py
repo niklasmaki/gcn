@@ -13,8 +13,9 @@ def node2vec(adj, dataset):
 
     if os.path.exists(embedding_path):
         wv = KeyedVectors.load_word2vec_format(embedding_path)
+        print('Loaded Node2Vec embeddings from file')
     else:
-        
+        print('Running Node2Vec...')
         node2vec = Node2Vec(G, dimensions=64, walk_length=30, num_walks=30)
         model = node2vec.fit(window=10, min_count=1, batch_words=4)
         model.wv.save_word2vec_format(embedding_path)
