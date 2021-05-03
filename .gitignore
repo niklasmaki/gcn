@@ -4,6 +4,7 @@
 *.pdf
 tmp/
 *.txt
+*.npy
 !requirements.txt
 start-venv.sh
 start-training.sh

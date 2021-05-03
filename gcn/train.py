@@ -6,7 +6,7 @@ import tensorflow as tf
 
 from gcn.utils import *
 from gcn.models import GCN, MLP
-from gcn.distances import node2vec
+from gcn.distances import node2vec, neighborhood_distance_matrix
 
 # Set random seed
 seed = 123
@@ -76,6 +76,7 @@ sess.run(tf.global_variables_initializer())
 
 cost_val = []
 
+print("Calculating embeddings...")
 d1 = node2vec(adj, FLAGS.dataset)
 
 # Train base model
@@ -106,8 +107,9 @@ print("Base model optimization Finished!")
 
 feed_dict = construct_feed_dict(features, support, y_train, train_mask, placeholders)
 preds = sess.run(model.outputs, feed_dict=feed_dict)
-preds = tf.nn.softmax(preds).eval(session=sess)
-print(preds.shape)
+
+print("Calculating neighorhood distance matrix...")
+d2 = neighborhood_distance_matrix(adj, preds, FLAGS.dataset)
 
 # Testing
 test_cost, test_acc, test_duration = evaluate(features, support, y_test, test_mask, placeholders)

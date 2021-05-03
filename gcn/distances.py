@@ -2,6 +2,7 @@ import os
 
 import numpy as np
 import networkx as nx
+import scipy.sparse as sp
 from node2vec import Node2Vec
 from gensim.models import KeyedVectors
 from sklearn.metrics import pairwise_distances
@@ -26,3 +27,42 @@ def node2vec(adj, dataset):
         embeddings[i] = wv.vectors[index]
 
     return pairwise_distances(embeddings, metric='cosine')
+
+def neighborhood_distance_matrix(adj, preds, dataset):
+    path = 'distances/{}.npy'.format(dataset)
+
+    if os.path.exists(path):
+        dist_matrix = np.load(path)
+        print('Loaded neighborhood distance matrix from file')
+        return dist_matrix
+
+    # Add self-loops
+    G = nx.from_scipy_sparse_matrix(adj + sp.eye(adj.shape[0]))
+
+    preds = np.argmax(preds, axis=1)
+    
+    dist_matrix = np.zeros((len(G), len(G)))
+    for i in range(len(G)):
+        for j in range(i):
+            dist = _neighborhood_distance(G, i, j, preds)
+            dist_matrix[i,j] = dist
+            dist_matrix[j,i] = dist
+
+        if i % 100 == 0:
+            print('calculating distances for node {}'.format(i))
+
+    np.save(path, dist_matrix)
+    return dist_matrix
+    
+
+
+def _neighborhood_distance(G, i, j, preds):
+
+    dist = 0
+    for k in G.neighbors(i):
+        for l in G.neighbors(j):
+            if preds[k] != preds[l]:
+                dist += 1
+    
+    dist /= len(list(G.neighbors(i))) * len(list(G.neighbors(j)))
+    return dist
