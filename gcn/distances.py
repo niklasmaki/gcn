@@ -67,3 +67,12 @@ def _neighborhood_distance(G, i, j, preds):
     
     dist /= len(list(G.neighbors(i))) * len(list(G.neighbors(j)))
     return dist
+
+
+def weighted_distance_matrix(d1, d2):
+    max_d1 = np.amax(d1)
+    max_d2 = np.amax(d2)
+
+    delta = max_d1 / max_d2
+    print('Using weight {} for the d2 matrix'.format(delta))
+    return d1 + delta * d2

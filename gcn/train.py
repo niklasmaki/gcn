@@ -6,7 +6,7 @@ import tensorflow as tf
 
 from gcn.utils import *
 from gcn.models import GCN, MLP
-from gcn.distances import node2vec, neighborhood_distance_matrix
+from gcn.distances import node2vec, neighborhood_distance_matrix, weighted_distance_matrix
 
 # Set random seed
 seed = 123
@@ -110,6 +110,9 @@ preds = sess.run(model.outputs, feed_dict=feed_dict)
 
 print("Calculating neighorhood distance matrix...")
 d2 = neighborhood_distance_matrix(adj, preds, FLAGS.dataset)
+
+print("Calculating weighted distance matrix...")
+d = weighted_distance_matrix(d1, d2)
 
 # Testing
 test_cost, test_acc, test_duration = evaluate(features, support, y_test, test_mask, placeholders)
