@@ -12,6 +12,7 @@ def test():
 
     print("done")
     print(w.shape)
+    print(w)
 
     
 
@@ -22,19 +23,9 @@ def map_estimate(adj, D):
     w = adj[np.triu_indices(m, k=1)]
     z = D[np.triu_indices(m, k=1)]
 
-    print('m', m)
-    print('---')
-    print(w)
-    print(w.T)
-    w = np.squeeze(w)
-    print(w[0].shape)
-    print('---')
-    print(z)
-
+    z = z[..., np.newaxis] # Make dimensions match
     d = np.sum(adj, axis=1)
-    print(d.shape)
-    print(d)
-    print(d.T)
+
 
 
     return primal_dual(z, 1, 1, w.T, d, 0.05, 0.02)
@@ -52,11 +43,8 @@ def primal_dual(z, alpha, beta, w, d, step_size, tolerance):
         step_size (float): Step size of the algorithm
         tolerance (float): Controls when to stop the algorithm
     """
-
     m = len(d)
     S = _generate_S(m)
-    print('S', S.shape)
-    print(np.linalg.norm(S))
 
     iterations = 100
     for i in range(iterations):
@@ -71,8 +59,6 @@ def primal_dual(z, alpha, beta, w, d, step_size, tolerance):
         q_bar = p_bar + step_size * np.dot(S, p)
         w = w - y + q
         d = d - y_bar + q_bar
-        print(w)
-        print(d)
         if np.linalg.norm(w - prev_w)/np.linalg.norm(prev_w) < tolerance \
             and np.linalg.norm(d - prev_d)/np.linalg.norm(prev_d) < tolerance:
             print("The algorithm has converged")
@@ -85,7 +71,6 @@ def _generate_S(m):
     col = 0
     for i in range(m):
         for j in range(i+1, m):
-            print(i, j, col)
             S[i, col] = 1
             S[j, col] = 1
             col += 1
