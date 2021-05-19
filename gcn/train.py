@@ -77,7 +77,7 @@ sess.run(tf.global_variables_initializer())
 cost_val = []
 
 print("Calculating embeddings...")
-d1 = node2vec(adj, FLAGS.dataset)
+d1 = node2vec_distances(adj, FLAGS.dataset)
 
 # Train base model
 for epoch in range(FLAGS.epochs):

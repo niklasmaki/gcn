@@ -26,7 +26,12 @@ def node2vec(adj, dataset):
     for i in list(G):
         index = wv.key_to_index[str(i)]
         embeddings[i] = wv.vectors[index]
+    
+    return embeddings
 
+
+def node2vec_distances(adj, dataset):
+    embeddings = node2vec(adj, dataset)
     return pairwise_distances(embeddings, metric='cosine')
 
 def neighborhood_distance_matrix(adj, preds, dataset):
