@@ -1,12 +1,36 @@
 import numpy as np
 import networkx as nx
-from gcn.distances import node2vec
+import hnswlib
+from gcn.distances import node2vec, node2vec_distances
+
+
+def get_allowed_edges(adj, dataset):
+    embeddings = node2vec(adj, dataset)
+    print(embeddings.shape)
+
+    num_elements, dim = embeddings.shape
+    data_labels = np.arange(num_elements)
+
+    p = hnswlib.Index(space = 'l2', dim = dim) # possible options are l2, cosine or ip
+    p.init_index(max_elements = num_elements, ef_construction = 500, M = 64)
+
+    p.add_items(embeddings, data_labels)
+
+    p.set_ef(500)
+    print('starting knn search')
+    labels, distances = p.knn_query(embeddings, k = 6)
+    print('got results:')
+    print(labels)
+    print(distances)
+    print(adj)
+
+
 
 def test():
     G = nx.erdos_renyi_graph(20, 0.1)
     adj = nx.adjacency_matrix(G)
     print(adj)
-    D = node2vec(adj, "test")
+    D = node2vec_distances(adj, "test")
     print("Running MAP estimation")
     w = map_estimate(adj, D)
 
@@ -28,7 +52,13 @@ def map_estimate(adj, D):
 
 
 
-    return primal_dual(z, 1, 1, w.T, d, 0.05, 0.02)
+    result = primal_dual(z, 0.5, 0.1, w.T, d, 0.05, 0.02)
+    result = result.round(decimals=1)
+    result = np.ceil(result).astype(int)
+    result = np.reshape(result, (1,190))
+    print(result)
+    print(w)
+
 
 
 def primal_dual(z, alpha, beta, w, d, step_size, tolerance):
@@ -59,10 +89,12 @@ def primal_dual(z, alpha, beta, w, d, step_size, tolerance):
         q_bar = p_bar + step_size * np.dot(S, p)
         w = w - y + q
         d = d - y_bar + q_bar
+        """
         if np.linalg.norm(w - prev_w)/np.linalg.norm(prev_w) < tolerance \
             and np.linalg.norm(d - prev_d)/np.linalg.norm(prev_d) < tolerance:
             print("The algorithm has converged")
-            return w
+            return w"""
+    return w
 
 def _generate_S(m):
     shape = (m, int(m*(m-1)/2))
