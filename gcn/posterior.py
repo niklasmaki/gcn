@@ -27,7 +27,7 @@ def get_allowed_edges(adj, dataset):
 
 
 def test():
-    G = nx.erdos_renyi_graph(20, 0.1)
+    G = nx.erdos_renyi_graph(20, 0.1, seed=1)
     adj = nx.adjacency_matrix(G)
     print(adj)
     D = node2vec_distances(adj, "test")
@@ -36,7 +36,7 @@ def test():
 
     print("done")
     print(w.shape)
-    print(w)
+    #print(w)
 
     
 
@@ -50,21 +50,28 @@ def map_estimate(adj, D):
     z = z[..., np.newaxis] # Make dimensions match
     d = np.sum(adj, axis=1)
 
+    m = len(d)
+    S = _generate_S(m)
+    _verify_S(S, w.T, adj)
 
 
-    result = primal_dual(z, 0.5, 0.1, w.T, d, 0.05, 0.02)
+    result = primal_dual(S, z, 0.5, 0.1, w.T, d, 0.05, 0.02)
     result = result.round(decimals=1)
     result = np.ceil(result).astype(int)
     result = np.reshape(result, (1,190))
+
     print(result)
     print(w)
 
+    return result
 
 
-def primal_dual(z, alpha, beta, w, d, step_size, tolerance):
+
+def primal_dual(S, z, alpha, beta, w, d, step_size, tolerance):
     """Primal dual algorithm for estimating the MAP solution.
 
     Args:
+        S (np.array): A linear operator that satisfies "Sw = array of degrees of the nodes"
         z (np.array): The half-vectorization of the distance matrix Z, length m*(m-1)/2
         alpha (float): Controls the scale of the solution
         beta ([type]): Controls the sparsity of the solution
@@ -73,9 +80,6 @@ def primal_dual(z, alpha, beta, w, d, step_size, tolerance):
         step_size (float): Step size of the algorithm
         tolerance (float): Controls when to stop the algorithm
     """
-    m = len(d)
-    S = _generate_S(m)
-
     iterations = 100
     for i in range(iterations):
         print('---------------------- Iteration', i)
@@ -107,3 +111,12 @@ def _generate_S(m):
             S[j, col] = 1
             col += 1
     return S
+
+def _verify_S(S, w, adj):
+    d1 =  np.dot(S, w)
+    d2 = np.sum(adj, axis=1)
+    if not np.array_equal(d1, d2):
+        print('Problem with generating S! The arrays Sw and d are not equal!')
+        print(d1)
+        print(d2)
+        raise Exception("Problem with generating S") 
