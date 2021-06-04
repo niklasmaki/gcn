@@ -22,17 +22,16 @@ def get_allowed_edges(adj, dataset):
     print('got results:')
     print(labels)
     print(distances)
-    print(adj)
+    return labels
 
 
 
 def test():
     G = nx.erdos_renyi_graph(20, 0.1, seed=1)
     adj = nx.adjacency_matrix(G)
-    print(adj)
     D = node2vec_distances(adj, "test")
     print("Running MAP estimation")
-    w = map_estimate(adj, D)
+    w = map_estimate(adj, D, "test")
 
     print("done")
     print(w.shape)
@@ -41,29 +40,63 @@ def test():
     
 
 
-def map_estimate(adj, D):
+def map_estimate(adj, D, dataset):
 
     m = adj.shape[0]
-    w = adj[np.triu_indices(m, k=1)]
-    z = D[np.triu_indices(m, k=1)]
+    w = vech(adj)
+    z = vech(D)
 
-    z = z[..., np.newaxis] # Make dimensions match
+    # Make dimensions match
+    z = z[..., np.newaxis]
+    w = w[..., np.newaxis]
+
     d = np.sum(adj, axis=1)
 
     m = len(d)
-    S = _generate_S(m)
-    _verify_S(S, w.T, adj)
+
+    labels = get_allowed_edges(adj, dataset)
+    
+    allowed_adj = np.zeros((m, m))
+    for row_idx in range(len(labels)):
+        row = labels[row_idx]
+        for col_idx in row:
+            if row_idx in labels[col_idx]: # Check that both of the nodes belong to each other's nearest neighbors
+                allowed_adj[row_idx, col_idx] = 1
+                allowed_adj[col_idx, row_idx] = 1
+
+    allowed_adj_vech_mask = vech(allowed_adj) > 0
+
+    w_allowed = w[allowed_adj_vech_mask]
+    z_allowed = z[allowed_adj_vech_mask]
 
 
-    result = primal_dual(S, z, 0.5, 0.1, w.T, d, 0.05, 0.02)
-    result = result.round(decimals=1)
-    result = np.ceil(result).astype(int)
-    result = np.reshape(result, (1,190))
+    #S = _generate_S(m)
+    S = _generate_S_allowed(m, allowed_adj_vech_mask)
+    
+    #_verify_S(S, w_allowed, adj)
 
-    print(result)
-    print(w)
+    result = primal_dual(S, z_allowed, 0.5, 0.1, w_allowed, d, 0.05, 0.02)
+    result = np.asarray(result).squeeze()
+    #result = result.round(decimals=1)
+    #result = np.ceil(result).astype(int)
+    #result = np.reshape(result, (1,35))
+    print(result.shape)
 
-    return result
+    full_result_vech = np.zeros(len(w))
+    full_result_vech[allowed_adj_vech_mask] = result[0]
+    print(full_result_vech.shape)
+
+    full_result = np.zeros(adj.shape)
+    full_result[np.triu_indices(m, k=1)] = full_result_vech
+    print(full_result.shape)
+
+
+    return full_result
+
+def vech(A):
+    m = A.shape[0]
+    vech = A[np.triu_indices(m, k=1)]
+    return np.squeeze(np.asarray(vech))
 
 
 
@@ -93,11 +126,11 @@ def primal_dual(S, z, alpha, beta, w, d, step_size, tolerance):
         q_bar = p_bar + step_size * np.dot(S, p)
         w = w - y + q
         d = d - y_bar + q_bar
-        """
+        
         if np.linalg.norm(w - prev_w)/np.linalg.norm(prev_w) < tolerance \
             and np.linalg.norm(d - prev_d)/np.linalg.norm(prev_d) < tolerance:
             print("The algorithm has converged")
-            return w"""
+            return w
     return w
 
 def _generate_S(m):
@@ -112,9 +145,27 @@ def _generate_S(m):
             col += 1
     return S
 
+def _generate_S_allowed(m, mask):
+    print(mask)
+    print(np.sum(mask))
+    shape = (m, np.sum(mask))
+    S = np.zeros(shape)
+
+    mask_idx = 0
+    col = 0
+    for i in range(m):
+        for j in range(i+1, m):
+            if mask[mask_idx]:
+                S[i, col] = 1
+                S[j, col] = 1
+                col += 1
+            mask_idx += 1
+    return S
+
 def _verify_S(S, w, adj):
     d1 =  np.dot(S, w)
     d2 = np.sum(adj, axis=1)
+    d2 = np.squeeze(np.asarray(d2))
     if not np.array_equal(d1, d2):
         print('Problem with generating S! The arrays Sw and d are not equal!')
         print(d1)
