@@ -8,6 +8,7 @@ from gcn.utils import *
 from gcn.models import GCN, MLP
 from gcn.distances import node2vec_distances, neighborhood_distance_matrix, weighted_distance_matrix
 from gcn.posterior import test, map_estimate, get_allowed_edges
+from gcn.train_utils import train_model, evaluate
 
 #test()
 #exit()
@@ -67,47 +68,14 @@ model = model_func(placeholders, input_dim=features[2][1], logging=True)
 # Initialize session
 sess = tf.Session()
 
-
-# Define model evaluation function
-def evaluate(features, support, labels, mask, placeholders):
-    t_test = time.time()
-    feed_dict_val = construct_feed_dict(features, support, labels, mask, placeholders)
-    outs_val = sess.run([model.loss, model.accuracy], feed_dict=feed_dict_val)
-    return outs_val[0], outs_val[1], (time.time() - t_test)
-
-
 # Init variables
 sess.run(tf.global_variables_initializer())
-
-cost_val = []
 
 print("Calculating embeddings...")
 d1 = node2vec_distances(adj, FLAGS.dataset)
 
-# Train base model
-for epoch in range(FLAGS.epochs):
-
-    t = time.time()
-    # Construct feed dictionary
-    feed_dict = construct_feed_dict(features, support, y_train, train_mask, placeholders)
-    feed_dict.update({placeholders['dropout']: FLAGS.dropout})
-
-    # Training step
-    outs = sess.run([model.opt_op, model.loss, model.accuracy], feed_dict=feed_dict)
-
-    # Validation
-    cost, acc, duration = evaluate(features, support, y_val, val_mask, placeholders)
-    cost_val.append(cost)
-
-    # Print results
-    print("Epoch:", '%04d' % (epoch + 1), "train_loss=", "{:.5f}".format(outs[1]),
-          "train_acc=", "{:.5f}".format(outs[2]), "val_loss=", "{:.5f}".format(cost),
-          "val_acc=", "{:.5f}".format(acc), "time=", "{:.5f}".format(time.time() - t))
-
-    if epoch > FLAGS.early_stopping and cost_val[-1] > np.mean(cost_val[-(FLAGS.early_stopping+1):-1]):
-        print("Early stopping...")
-        break
-
+train_model(FLAGS, sess, model, features, support, y_train, y_val, train_mask, val_mask, placeholders)
+ 
 print("Base model optimization Finished!")
 
 feed_dict = construct_feed_dict(features, support, y_train, train_mask, placeholders)
@@ -123,6 +91,6 @@ print("Calculating the MAP estimate...")
 map_estimate(adj, d, FLAGS.dataset)
 
 # Testing
-test_cost, test_acc, test_duration = evaluate(features, support, y_test, test_mask, placeholders)
+test_cost, test_acc, test_duration = evaluate(sess, model, features, support, y_test, test_mask, placeholders)
 print("Test set results:", "cost=", "{:.5f}".format(test_cost),
       "accuracy=", "{:.5f}".format(test_acc), "time=", "{:.5f}".format(test_duration))
