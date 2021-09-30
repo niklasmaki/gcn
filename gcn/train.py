@@ -72,7 +72,7 @@ sess.run(tf.global_variables_initializer())
 print("Calculating embeddings...")
 d1 = node2vec_distances(adj, FLAGS.dataset)
 
-train_model(FLAGS, sess, model, features, support, y_train, y_val, train_mask, val_mask, placeholders)
+gcn_pred_soft, gcn_pred = train_model(FLAGS, sess, model, features, support, y_train, y_val, train_mask, val_mask, placeholders)
  
 print("Base model optimization Finished!")
 
@@ -97,3 +97,6 @@ final_pred_soft, final_pred = train_model(FLAGS, sess, final_model, features, ma
 
 test_acc = sess.run(masked_accuracy(final_pred_soft, y_test, test_mask))
 print("Test accuracy: ", "{:.5f}".format(test_acc))
+
+gcn_test_acc = sess.run(masked_accuracy(gcn_pred_soft, y_test, test_mask))
+print("GCN Test accuracy: ", "{:.5f}".format(gcn_test_acc))
