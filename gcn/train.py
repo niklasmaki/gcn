@@ -9,10 +9,7 @@ from gcn.models import GCN, MLP
 from gcn.distances import node2vec_distances, neighborhood_distance_matrix, weighted_distance_matrix
 from gcn.posterior import test, map_estimate, get_allowed_edges
 from gcn.train_utils import train_model, evaluate
-
-#test()
-#exit()
-
+from gcn.metrics import masked_accuracy
 
 # Set random seed
 seed = 123
@@ -25,11 +22,12 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('dataset', 'cora', 'Dataset string.')  # 'cora', 'citeseer', 'pubmed'
 flags.DEFINE_string('model', 'gcn', 'Model string.')  # 'gcn', 'gcn_cheby', 'dense'
 flags.DEFINE_float('learning_rate', 0.01, 'Initial learning rate.')
-flags.DEFINE_integer('epochs', 20, 'Number of epochs to train.')
+flags.DEFINE_integer('epochs', 200, 'Number of epochs to train.')
+flags.DEFINE_integer('epoch_to_start_collect_weights', 100, 'The epoch after which weights will be collected.')
 flags.DEFINE_integer('hidden1', 16, 'Number of units in hidden layer 1.')
 flags.DEFINE_float('dropout', 0.5, 'Dropout rate (1 - keep probability).')
 flags.DEFINE_float('weight_decay', 5e-4, 'Weight for L2 loss on embedding matrix.')
-flags.DEFINE_integer('early_stopping', 10, 'Tolerance for early stopping (# of epochs).')
+flags.DEFINE_integer('early_stopping', 1000, 'Tolerance for early stopping (# of epochs).')
 flags.DEFINE_integer('max_degree', 3, 'Maximum Chebyshev polynomial degree.')
 
 # Load data
@@ -88,9 +86,14 @@ print("Calculating weighted distance matrix...")
 d = weighted_distance_matrix(d1, d2)
 
 print("Calculating the MAP estimate...")
-map_estimate(adj, d, FLAGS.dataset)
+map_support = map_estimate(adj, d, FLAGS.dataset)
+map_support = [preprocess_adj(map_support)]
 
-# Testing
-test_cost, test_acc, test_duration = evaluate(sess, model, features, support, y_test, test_mask, placeholders)
-print("Test set results:", "cost=", "{:.5f}".format(test_cost),
-      "accuracy=", "{:.5f}".format(test_acc), "time=", "{:.5f}".format(test_duration))
+print("Sampling weights by running a GCN with MC dropout...")
+
+final_model = model_func(placeholders, input_dim=features[2][1], logging=True)
+sess.run(tf.global_variables_initializer())
+final_pred_soft, final_pred = train_model(FLAGS, sess, final_model, features, map_support, y_train, y_val, train_mask, val_mask, placeholders)
+
+test_acc = sess.run(masked_accuracy(final_pred_soft, y_test, test_mask))
+print("Test accuracy: ", "{:.5f}".format(test_acc))
