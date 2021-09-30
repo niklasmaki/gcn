@@ -186,3 +186,39 @@ class GraphConvolution(Layer):
             output += self.vars['bias']
 
         return self.act(output)
+
+class GraphConvolutionSparse(Layer):
+    """Graph convolution layer for sparse inputs."""
+    def __init__(self, input_dim, output_dim, adj, features_nonzero, dropout=0., act=tf.nn.relu, **kwargs):
+        super(GraphConvolutionSparse, self).__init__(**kwargs)
+        with tf.variable_scope(self.name + '_vars'):
+            self.vars['weights'] = glorot(input_dim, output_dim, name="weights")
+        self.dropout = dropout
+        self.adj = adj
+        self.act = act
+        self.sparse_inputs = True
+        self.features_nonzero = features_nonzero
+
+    def _call(self, inputs):
+        x = inputs
+        x = dropout_sparse(x, 1-self.dropout, self.features_nonzero)
+        x = tf.sparse_tensor_dense_matmul(x, self.vars['weights'])
+        x = tf.sparse_tensor_dense_matmul(self.adj, x)
+        outputs = self.act(x)
+        return outputs
+
+
+class InnerProductDecoder(Layer):
+    """Decoder model layer for link prediction."""
+    def __init__(self, input_dim, dropout=0., act=tf.nn.sigmoid, **kwargs):
+        super(InnerProductDecoder, self).__init__(**kwargs)
+        self.dropout = dropout
+        self.act = act
+
+    def _call(self, inputs):
+        inputs = tf.nn.dropout(inputs, 1-self.dropout)
+        x = tf.transpose(inputs)
+        x = tf.matmul(inputs, x)
+        x = tf.reshape(x, [-1])
+        outputs = self.act(x)
+        return outputs
