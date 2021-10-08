@@ -34,6 +34,17 @@ def node2vec_distances(adj, dataset):
     embeddings = node2vec(adj, dataset)
     return pairwise_distances(embeddings, metric='cosine')
 
+
+def vgae_distances(dataset):
+    path = 'embeddings/{}.npy'.format(dataset)
+    if os.path.exists(path):
+        embeddings = np.load(path)
+        print('Loaded VGAE embeddings from file')
+        return pairwise_distances(embeddings, metric='cosine')
+    else:
+        print('Cannot find VGAE embeddings')
+
+
 def neighborhood_distance_matrix(adj, preds, dataset):
     path = 'distances/{}.npy'.format(dataset)
 

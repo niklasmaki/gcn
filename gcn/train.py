@@ -6,7 +6,7 @@ import tensorflow as tf
 
 from gcn.utils import *
 from gcn.models import GCN, MLP
-from gcn.distances import node2vec_distances, neighborhood_distance_matrix, weighted_distance_matrix
+from gcn.distances import node2vec_distances, vgae_distances, neighborhood_distance_matrix, weighted_distance_matrix
 from gcn.posterior import test, map_estimate, get_allowed_edges
 from gcn.train_utils import train_model, evaluate
 from gcn.metrics import masked_accuracy
@@ -70,7 +70,8 @@ sess = tf.Session()
 sess.run(tf.global_variables_initializer())
 
 print("Calculating embeddings...")
-d1 = node2vec_distances(adj, FLAGS.dataset)
+#d1 = node2vec_distances(adj, FLAGS.dataset)
+d1 = vgae_distances(FLAGS.dataset)
 
 gcn_pred_soft, gcn_pred = train_model(FLAGS, sess, model, features, support, y_train, y_val, train_mask, val_mask, placeholders)
  
